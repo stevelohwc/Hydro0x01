@@ -9,28 +9,25 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#ifdef MQTT_KEEPALIVE
+  #undef MQTT_KEEPALIVE
+#endif
+#define MQTT_KEEPALIVE 60
+
 #include <Arduino.h>
 #include <Preferences.h>
 
 // ============================================================================
-// 1. SYSTEM IDENTIFICATION
+// SYSTEM IDENTIFICATION
 // ============================================================================
-#define SYSTEM_NAME         "HydroNode_01"
+#define SYSTEM_NAME "HydroNode_01"
 #ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION    "1.0.0"
+#define FIRMWARE_VERSION "1.0.0"
 #endif
-#define HARDWARE_REVISION   "ESP-32D"
+#define HARDWARE_REVISION "ESP-32D"
 
 // ============================================================================
-// 2. CONNECTIVITY & WIFI
-// ============================================================================
-#define WIFI_SSID               "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD           "YOUR_WIFI_PASSWORD"
-#define WIFI_CONNECT_TIMEOUT    30000  // 30 seconds
-#define WIFI_RECONNECT_INTERVAL 60000  // 1 minute
-
-// ============================================================================
-// 3. SYSTEM SECURITY & OTA
+// SYSTEM SECURITY
 // ============================================================================
 // UNCOMMENT TO LOCK DOWN SYSTEM
 //#define ENFORCE_STRICT_SECURITY 
@@ -43,6 +40,14 @@
     #define REQUIRE_SIGNED_FIRMWARE false
 #endif
 
+// --- Transport Security Configurations ---
+#define MQTT_USE_TLS true               // true: use WiFiClientSecure (8883), false: use WiFiClient (1883)
+#define MQTT_ALLOW_INSECURE_TLS false   // true: skip cert validation (setInsecure), false: verify CA
+#define MQTT_USE_CA_CERT true           // true: load CA from LittleFS
+#define MQTT_CA_FILENAME "/mqtt_ca.pem" // For MQTT Broker (e.g., HiveMQ)
+#define OTA_CA_FILENAME "/ota_ca.pem"   // For your OTA Server (e.g., GitHub, AWS)
+#define OTA_PUBKEY_FILENAME "/ota_pub.pem" // To sign Firmware
+
 // OTA CA Verification Mode
 // ─────────────────────────────────────────────────────────────────────────────
 // true  → Full X.509 chain verification. Use with a real CA (Let's Encrypt,
@@ -53,25 +58,27 @@
 //         ⚠ Only use false on a trusted local network.
 // ─────────────────────────────────────────────────────────────────────────────
 #define OTA_VERIFY_CA false
-#define OTA_CA_FILENAME "/ota_ca.pem"   // For your OTA Server (e.g., GitHub, AWS)
-#define OTA_PUBKEY_FILENAME "/ota_pub.pem" // To sign Firmware
+
 
 // ============================================================================
-// 4. MQTT CONFIGURATION
+// WIFI CONFIGURATION
 // ============================================================================
-#define MQTT_BROKER             "broker.hivemq.com"  // Public broker for testing
-#define MQTT_PORT_TLS           8883
-#define MQTT_PORT_PLAIN         1883
-#define MQTT_USER               ""  // Leave empty for public brokers
-#define MQTT_PASSWORD           ""
-#define MQTT_CLIENT_ID          SYSTEM_NAME
-#define MQTT_KEEPALIVE          60
-#define MQTT_QOS                1
-#define MQTT_RETAIN             true
-#define MQTT_USE_TLS            true               // true: use WiFiClientSecure (8883), false: use WiFiClient (1883)
-#define MQTT_ALLOW_INSECURE_TLS false   // true: skip cert validation (setInsecure), false: verify CA
-#define MQTT_USE_CA_CERT        true           // true: load CA from LittleFS
-#define MQTT_CA_FILENAME        "/mqtt_ca.pem" // For MQTT Broker (e.g., HiveMQ)
+#define WIFI_SSID "YOUR_SSID"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
+#define WIFI_CONNECT_TIMEOUT 30000  // 30 seconds
+#define WIFI_RECONNECT_INTERVAL 60000  // 1 minute
+
+// ============================================================================
+// MQTT CONFIGURATION
+// ============================================================================
+#define MQTT_BROKER "broker.hivemq.com"  // Public broker for testing
+#define MQTT_PORT_TLS 8883
+#define MQTT_PORT_PLAIN 1883
+#define MQTT_USER ""  // Leave empty for public brokers
+#define MQTT_PASSWORD ""
+#define MQTT_CLIENT_ID SYSTEM_NAME
+#define MQTT_QOS 1
+#define MQTT_RETAIN true
 
 #if MQTT_USE_TLS
     #define MQTT_PORT MQTT_PORT_TLS
@@ -118,7 +125,13 @@
 #define TOPIC_HEARTBEAT MQTT_DEVICE_TOPIC "/heartbeat"
 
 // ============================================================================
-// 5. HARDWARE PINOUT (GPIO MAP)
+// POWER MANAGEMENT
+// ============================================================================
+#define VOLTAGE_DIVIDER_R1 30000.0
+#define VOLTAGE_DIVIDER_R2 7500.0
+
+// ============================================================================
+// SENSOR PINS (ESP32 Dev Board)
 // ============================================================================
 // OneWire sensors
 #define PIN_ONEWIRE 4  // DS18B20 water temperature
@@ -132,13 +145,9 @@
 #define DHT_TYPE DHT11
 //#define DHT_TYPE DHT22 // If using DHT22
 
-// Analog Water level sensor (Not recommended)
+// Analog sensors (Must use ADC1 to work alongside WiFi)
 #define PIN_WATER_LEVEL 35      // ADC1_CH7 (Input only)
-
-// Battery voltage sensor (via voltage divider)
 #define PIN_BATTERY_VOLTAGE 34  // ADC1_CH6 (Input only - via voltage divider)
-#define VOLTAGE_DIVIDER_R1 30000.0 //100000.0
-#define VOLTAGE_DIVIDER_R2 7500.0  //20000.0
 
 // Digital sensors
 #define PIN_HC_SR04_TRIGGER 13
@@ -149,15 +158,15 @@
 #define PIN_EC_SENSOR 33  // ADC1_CH5
 
 // ============================================================================
-// 6. RELAY & SHIFT REGISTER CONFIGURATION
+// RELAY & SHIFT REGISTER CONFIGURATION
 // ============================================================================
 // SPI Pins for 74HC595 (Using VSPI defaults for ESP32)
-#define USE_SHIFT_REGISTER true  // Set to false to use direct GPIO control (not recommended for more than 2 relays)
 #define PIN_SR_DATA  23  // MOSI (DS)
 #define PIN_SR_CLOCK 18  // SCK (SHCP)
 #define PIN_SR_LATCH 5   // CS (STCP)
 #define PIN_SR_OE    17  // Output Enable (Active Low) - Optional but recommended for glitch prevention
 
+#define USE_SHIFT_REGISTER true  // Set to false to use direct GPIO control (not recommended for more than 2 relays)
 // Logical Relay IDs (Maps to bit positions 0-31)
 enum RelayID : uint8_t {
     RELAY_MAIN_PUMP = 0,
@@ -189,7 +198,7 @@ constexpr int RELAY_MAX = 31; // set to (max enum value)+1
 #define PIN_RELAY_AUX 0
 
 // ============================================================================
-// 7. SENSOR LOGIC & CALIBRATION
+// SENSOR CONFIGURATION
 // ============================================================================
 // DS18B20
 #define DS18B20_RESOLUTION 12  // 9-12 bits (12 = 0.0625°C resolution)
@@ -248,17 +257,20 @@ constexpr int RELAY_MAX = 31; // set to (max enum value)+1
 #define EC_DEFAULT_SCALE 2.0f
 
 // ============================================================================
-// 8. TIMING & SAFETY
+// TIMING CONFIGURATION
 // ============================================================================
 #define HEARTBEAT_INTERVAL 60000  // 1 minute
 #define ERROR_CHECK_INTERVAL 1000  // 1 second
 
+// ============================================================================
+// SAFETY LIMITS
+// ============================================================================
 #define MAX_CONSECUTIVE_ERRORS 10
 #define SENSOR_TIMEOUT_MS 5000
 #define MQTT_RECONNECT_ATTEMPTS 3
 
 // ============================================================================
-// 9. LOGGING
+// LOGGING
 // ============================================================================
 #define LOG_LEVEL_ERROR 0
 #define LOG_LEVEL_WARNING 1
@@ -267,7 +279,7 @@ constexpr int RELAY_MAX = 31; // set to (max enum value)+1
 #define LOG_LEVEL_VERBOSE 4
 
 #ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_ERROR  // Default log level
+#define LOG_LEVEL LOG_LEVEL_ERROR  // Default log level
 #endif
 
 // Log macros
@@ -278,7 +290,7 @@ constexpr int RELAY_MAX = 31; // set to (max enum value)+1
 #define LOG_VERBOSE(msg, ...) if(LOG_LEVEL >= LOG_LEVEL_VERBOSE) Serial.printf("[VERBOSE] " msg "\n", ##__VA_ARGS__)
 
 // ============================================================================
-// 10. SYSTEM STATES & DATA MODELS
+// SYSTEM STATES
 // ============================================================================
 enum SystemState {
     STATE_INIT,
@@ -315,6 +327,10 @@ enum TankShape : uint8_t {
 #define DEFAULT_TANK_FULL_H 100.0  // cm
 #define DEFAULT_TANK_EMPTY_D 120.0 // cm (sensor -> bottom when empty)
 
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
 struct SensorData {
     float waterTemp;
     float airTemp;
@@ -328,8 +344,10 @@ struct SensorData {
     float batteryVoltage = 12.01;
     unsigned long timestamp;
     bool valid;
-    float waterLevelLitres; 
-    float waterLevelPercent;
+    //float tankVolumeLitres; // New: Current liters
+    //float tankFillPercent;  // New: 0 to 100%
+    float waterLevelLitres; // New: Current liters
+    float waterLevelPercent; //New: 0 to 100%
 };
 
 struct SystemStatus {
@@ -341,6 +359,7 @@ struct SystemStatus {
     unsigned long uptime;
     unsigned long lastSleepTime;
 };
+
 
 struct SystemConfig {
     // Power & Timing Configuration
@@ -364,7 +383,7 @@ struct SystemConfig {
     // Battery Protection Thresholds (VERY IMPORTANT)
     // ------------------------------------------------------------
     // These values MUST match your battery type.
-    //
+    
     // For 12V AGM / GEL (lead-acid solar battery):
     // batteryLowThreshold     = 12.1V  → early warning (~40–50% capacity)
     // batteryCriticalThreshold= 11.6V  → emergency shutdown to avoid damage
@@ -400,7 +419,7 @@ struct SystemConfig {
     uint32_t pumpMaxOnTime = 300000;   // Maximum 5 minutes
     uint32_t pumpCooldownTime = 120000; // 2 minutes between runs
 
-    // ---- Environment Control ----
+    // ---- Environment Control (optional features) ----
     // Fan: set fanEnabled=false if you have no fan relay connected
     bool fanEnabled = true;
     bool fanAutoMode = true;          // If false, fan is controlled manually via MQTT (overrides temp control)
@@ -429,7 +448,7 @@ struct SystemConfig {
     float tankFullH = 100.0;
     float tankEmptyD = 120.0;
 
-    // Test (for debugging)
+    // Test
     bool testCommandsEnabled = false;
 
     // Analog pH: pH = phSlope * V + phOffset (V at ADC pin, 0–3.3 V)
